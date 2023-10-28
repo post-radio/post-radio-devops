@@ -5,9 +5,15 @@
     - vars.yml
 
   tasks:
-    - name: Install nginx
+    - name: Install required packages
       apt:
-        name: ["nginx"]
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+          - git
+          - apt-transport-https
+          - wget
         state: present
 
     - name: Copy nginx configuration
@@ -16,13 +22,6 @@
         dest: /etc/nginx/sites-enabled/default
       notify:
         - Restart nginx
-
-    - name: Install Certbot and Nginx plugin
-      apt:
-        name:
-          - certbot
-          - python3-certbot-nginx
-        state: present
 
     - name: Check if SSL certificate exists
       stat:
@@ -44,22 +43,22 @@
 
     - name: Add Microsoft package repository and install dotnet SDK
       block:
-        - name: Add Microsoft package repository
-          shell: |
-            wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
-            dpkg -i /tmp/packages-microsoft-prod.deb
-            apt-get update
+        - name: Download Microsoft package
+          get_url:
+            url: https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
+            dest: /tmp/packages-microsoft-prod.deb
+
+        - name: Install Microsoft package
+          apt:
+            deb: /tmp/packages-microsoft-prod.deb
 
         - name: Install dotnet SDK
           apt:
             name: ["dotnet-sdk-7.0"]
             state: present
-      when: not ms_repo_file.stat.exists
+            update_cache: yes
 
-    - name: Install git
-      apt:
-        name: ["git"]
-        state: present
+      when: not ms_repo_file.stat.exists
 
     - name: Clone project repository
       git:
