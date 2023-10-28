@@ -1,0 +1,107 @@
+---
+- hosts: webserver
+  become: yes 
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Install required packages
+      apt:
+        name: ["tmux", "nginx", "git", "unzip"]
+        state: present
+
+    - name: Copy nginx configuration
+      template:
+        src: nginx.default.conf.j2
+        dest: /etc/nginx/sites-enabled/default
+      notify:
+        - Restart nginx
+
+    - name: Install Certbot and Nginx plugin
+      apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Check if SSL certificate exists
+      stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+      register: cert_stat
+    
+    - name: Obtain a certificate using the Nginx plugin
+      command:
+        cmd: certbot --nginx -d {{ domain_name }} -d {{ domain_alias }} --non-interactive --agree-tos --email {{ admin_email }}
+        creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+      when: not cert_stat.stat.exists
+      notify:
+        - Restart nginx
+
+    - name: Set up certbot renewal cron job
+      cron:
+        name: Certbot Renewal
+        minute: "30"
+        hour: "2"
+        job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
+
+    - name: Delete zip directory
+      file:
+        path: "{{ ragon_zip_directory }}"
+        state: absent
+
+    - name: Delete server directory
+      file:
+        path: "{{ ragon_server_directory }}"
+        state: absent
+
+    - name: Ensure ~/zip directory exists
+      file:
+        path: "{{ ragon_zip_directory }}"
+        state: directory
+        mode: '0755'
+
+    - name: Ensure ~/server directory exists
+      file:
+        path: "{{ ragon_server_directory }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy nginx configuration
+      template:
+        src: nginx.ssl.conf.j2
+        dest: /etc/nginx/sites-enabled/default
+      notify:
+        - Restart nginx
+
+    - name: Download ZIP from GitHub releases
+      get_url:
+        url: "{{ ragon_release_link }}"
+        dest: "{{ ragon_zip_file }}"
+        mode: '0755'
+
+    - name: Unzip the file
+      unarchive:
+        src: "{{ ragon_zip_file }}"
+        dest: "{{ ragon_server_directory }}"
+        remote_src: yes    
+
+    - name: Copy Ragon config
+      copy:
+        src: relay.config.json
+        dest: "{{ ragon_server_directory }}/relay.config.json"
+
+    - name: Kill all tmux sessions
+      shell: tmux list-sessions -F '#S' | xargs -r tmux kill-session -t
+      ignore_errors: yes
+
+    - name: Start app in tmux
+      shell: |
+        tmux new-session -d -s mysession
+        tmux send-keys -t mysession '{{ ragon_server_directory }}/Ragon.Relay' C-m
+      args:
+        chdir: "{{ ragon_server_directory }}"
+
+  handlers:
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
