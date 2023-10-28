@@ -56,12 +56,6 @@
             state: present
       when: not ms_repo_file.stat.exists
 
-    - name: Install dotnet SDK
-      apt:
-        name: ["dotnet-sdk-7.0"]
-        state: present
-        update_cache: yes
-
     - name: Install git
       apt:
         name: ["git"]
@@ -71,7 +65,7 @@
       git:
         repo: "{{ git_repository }}"
         dest: "{{ project_directory }}"
-        version: master
+        version: main
 
     - name: Restore and build the project
       command:
