@@ -37,11 +37,24 @@
       notify:
         - Restart nginx
 
-    - name: Add Microsoft package repository
-      shell: |
-        wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-        dpkg -i packages-microsoft-prod.deb
-      when: "'packages-microsoft-prod.deb' not in ansible_facts.packages"
+    - name: Check if Microsoft package repository is already added
+      stat:
+          path: /etc/apt/sources.list.d/microsoft-prod.list
+          register: ms_repo_file
+
+    - name: Add Microsoft package repository and install dotnet SDK
+      block:
+        - name: Add Microsoft package repository
+          shell: |
+            wget -q https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
+            dpkg -i /tmp/packages-microsoft-prod.deb
+            apt-get update
+
+        - name: Install dotnet SDK
+          apt:
+            name: ["dotnet-sdk-7.0"]
+            state: present
+      when: not ms_repo_file.stat.exists
 
     - name: Install dotnet SDK
       apt:
