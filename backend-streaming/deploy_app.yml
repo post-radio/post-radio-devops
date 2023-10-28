@@ -39,8 +39,8 @@
 
     - name: Check if Microsoft package repository is already added
       stat:
-          path: /etc/apt/sources.list.d/microsoft-prod.list
-          register: ms_repo_file
+        path: /etc/apt/sources.list.d/microsoft-prod.list
+      register: ms_repo_file
 
     - name: Add Microsoft package repository and install dotnet SDK
       block:
