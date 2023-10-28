@@ -1,0 +1,83 @@
+---
+- hosts: webserver
+  become: yes
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Install nginx
+      apt:
+        name: ["nginx"]
+        state: present
+
+    - name: Copy nginx configuration
+      template:
+        src: nginx.default.conf.j2
+        dest: /etc/nginx/sites-enabled/default
+      notify:
+        - Restart nginx
+
+    - name: Install Certbot and Nginx plugin
+      apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Check if SSL certificate exists
+      stat:
+        path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+      register: cert_stat
+
+    - name: Obtain a certificate using the Nginx plugin
+      command:
+        cmd: certbot --nginx -d {{ domain_name }} -d {{ domain_alias }} --non-interactive --agree-tos --email {{ admin_email }}
+        creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+      when: not cert_stat.stat.exists
+      notify:
+        - Restart nginx
+
+    - name: Add Microsoft package repository
+      shell: |
+        wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+        dpkg -i packages-microsoft-prod.deb
+      when: "'packages-microsoft-prod.deb' not in ansible_facts.packages"
+
+    - name: Install dotnet SDK
+      apt:
+        name: ["dotnet-sdk-7.0"]
+        state: present
+        update_cache: yes
+
+    - name: Install git
+      apt:
+        name: ["git"]
+        state: present
+
+    - name: Clone project repository
+      git:
+        repo: "{{ git_repository }}"
+        dest: "{{ project_directory }}"
+        version: master
+
+    - name: Restore and build the project
+      command:
+        cmd: dotnet build --configuration Release
+        chdir: "{{ project_directory }}"
+
+    - name: Kill all tmux sessions
+      shell: tmux list-sessions -F '#S' | xargs -r tmux kill-session -t
+      ignore_errors: yes
+
+    - name: Start app in tmux
+      shell: |
+        tmux new-session -d -s mysession
+        tmux send-keys -t mysession 'dotnet run --configuration Release' C-m
+      args:
+        chdir: "{{ project_directory }}"
+
+  handlers:
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
