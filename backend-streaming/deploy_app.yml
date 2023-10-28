@@ -51,11 +51,18 @@
       notify:
         - Restart nginx
 
+    - name: Install Certbot and Nginx plugin
+      apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
     - name: Check if SSL certificate exists
       stat:
         path: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
       register: cert_stat
-
+    
     - name: Obtain a certificate using the Nginx plugin
       command:
         cmd: certbot --nginx -d {{ domain_name }} -d {{ domain_alias }} --non-interactive --agree-tos --email {{ admin_email }}
@@ -63,6 +70,20 @@
       when: not cert_stat.stat.exists
       notify:
         - Restart nginx
+
+    - name: Copy nginx configuration
+      template:
+        src: nginx.ssl.conf.j2
+        dest: /etc/nginx/sites-enabled/default
+      notify:
+        - Restart nginx
+
+    - name: Set up certbot renewal cron job
+      cron:
+        name: Certbot Renewal
+        minute: "30"
+        hour: "2"
+        job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
 
     - name: Clone project repository
       git:
@@ -82,7 +103,7 @@
     - name: Start app in tmux
       shell: |
         tmux new-session -d -s mysession
-        tmux send-keys -t mysession 'dotnet run --configuration Release --urls="https://localhost:5000"' C-m
+        tmux send-keys -t mysession 'dotnet run --configuration Release --urls:localhost:5000' C-m
       args:
         chdir: "{{ project_directory }}"
 
