@@ -5,6 +5,18 @@
     - vars.yml
 
   tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
+          - git
+          - apt-transport-https
+          - wget
+          - snapd
+        state: present
+
     - name: Purge dotnet-sdk-7.0
       apt:
         name: dotnet-sdk-7.0
@@ -29,20 +41,6 @@
       command: dotnet --info
       register: dotnet_info
       changed_when: false
-
-    - debug: 
-        var: dotnet_info.stdout_lines
-    - name: Install required packages
-      apt:
-        name:
-          - nginx
-          - certbot
-          - python3-certbot-nginx
-          - git
-          - apt-transport-https
-          - wget
-          - snapd
-        state: present
 
     - name: Copy nginx configuration
       template:
@@ -105,7 +103,7 @@
         tmux new-session -d -s mysession
         tmux send-keys -t mysession 'dotnet run --configuration Release --urls:localhost:5000' C-m
       args:
-        chdir: "{{ project_directory }}"
+        chdir: "{{ project_directory }}/Core/"
 
   handlers:
     - name: Restart nginx
