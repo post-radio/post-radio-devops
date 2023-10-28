@@ -64,33 +64,6 @@
       notify:
         - Restart nginx
 
-    - name: Check if Microsoft package repository is already added
-      stat:
-        path: /etc/apt/sources.list.d/microsoft-prod.list
-      register: ms_repo_file
-
-    - name: Add Microsoft package repository and install dotnet SDK
-      block:
-        - name: Download Microsoft package
-          get_url:
-            url: https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
-            dest: /tmp/packages-microsoft-prod.deb
-
-        - name: Install Microsoft package
-          apt:
-            deb: /tmp/packages-microsoft-prod.deb
-
-        - name: Install dotnet-sdk using Snap
-          shell: sudo snap install dotnet-sdk --classic
-          become: yes
-
-        - name: Create symbolic link for dotnet
-          command:
-            cmd: ln -s /snap/dotnet-sdk/current/dotnet /usr/bin/dotnet
-            creates: /usr/bin/dotnet
-
-      when: not ms_repo_file.stat.exists
-
     - name: Clone project repository
       git:
         repo: "{{ git_repository }}"
@@ -109,7 +82,7 @@
     - name: Start app in tmux
       shell: |
         tmux new-session -d -s mysession
-        tmux send-keys -t mysession 'dotnet run --configuration Release' C-m
+        tmux send-keys -t mysession 'dotnet run --configuration Release --urls="https://localhost:5000"' C-m
       args:
         chdir: "{{ project_directory }}"
 
