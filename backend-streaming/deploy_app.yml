@@ -14,6 +14,7 @@
           - git
           - apt-transport-https
           - wget
+          - snapd
         state: present
 
     - name: Copy nginx configuration
@@ -52,11 +53,15 @@
           apt:
             deb: /tmp/packages-microsoft-prod.deb
 
-        - name: Install dotnet SDK
-          apt:
-            name: ["dotnet-sdk-7.0"]
-            state: present
-            update_cache: yes
+        - name: Install dotnet SDK using Snap
+          command:
+            cmd: snap install dotnet-sdk --classic
+            creates: /snap/bin/dotnet
+
+        - name: Create symbolic link for dotnet
+          command:
+            cmd: ln -s /snap/dotnet-sdk/current/dotnet /usr/bin/dotnet
+            creates: /usr/bin/dotnet
 
       when: not ms_repo_file.stat.exists
 
