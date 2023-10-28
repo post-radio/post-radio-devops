@@ -53,10 +53,9 @@
           apt:
             deb: /tmp/packages-microsoft-prod.deb
 
-        - name: Install dotnet SDK using Snap
-          command:
-            cmd: snap install dotnet-sdk --classic
-            creates: /snap/bin/dotnet
+        - name: Install dotnet-sdk using Snap
+          shell: sudo snap install dotnet-sdk --classic
+          become: yes
 
         - name: Create symbolic link for dotnet
           command:
