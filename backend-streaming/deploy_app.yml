@@ -5,7 +5,7 @@
     - vars.yml
 
   tasks:
-    - name: Install required packages
+    - name: Install required system packages
       apt:
         name:
           - nginx
@@ -15,32 +15,20 @@
           - apt-transport-https
           - wget
           - snapd
+          - docker.io
+          - python3-pip
         state: present
 
-    - name: Purge dotnet-sdk-7.0
-      apt:
-        name: dotnet-sdk-7.0
-        state: absent
-
-    - name: Remove Microsoft package repository and update
-      block:
-        - name: Remove microsoft-prod.list
-          file:
-            path: /etc/apt/sources.list.d/microsoft-prod.list
-            state: absent
-        - name: Update apt cache
-          apt:
-            update_cache: yes
-
-    - name: Install dotnet7
-      apt:
-        name: dotnet7
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
         state: present
 
-    - name: Check dotnet info
-      command: dotnet --info
-      register: dotnet_info
-      changed_when: false
+    - name: Start and enable Docker service
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
     - name: Copy nginx configuration
       template:
@@ -89,21 +77,15 @@
         dest: "{{ project_directory }}"
         version: main
 
-    - name: Restore and build the project
+    - name: Build Docker image for the project
       command:
-        cmd: dotnet build --configuration Release
+        cmd: docker-compose build
         chdir: "{{ project_directory }}"
 
-    - name: Kill all tmux sessions
-      shell: tmux list-sessions -F '#S' | xargs -r tmux kill-session -t
-      ignore_errors: yes
-
-    - name: Start app in tmux
-      shell: |
-        tmux new-session -d -s mysession
-        tmux send-keys -t mysession 'dotnet run --configuration Release --urls:localhost:5000' C-m
-      args:
-        chdir: "{{ project_directory }}/Core/"
+    - name: Run containers using Docker Compose
+      command:
+        cmd: docker-compose up -d
+        chdir: "{{ project_directory }}"
 
   handlers:
     - name: Restart nginx
