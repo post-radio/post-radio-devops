@@ -19,13 +19,18 @@
           - python3-pip
         state: present
 
+    - name: Set Docker Compose download URL
+      set_fact:
+        docker_compose_url: "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-{{ ansible_system }}-{{ ansible_machine }}"
+
     - name: Download Docker Compose
       command:
-        cmd: "curl -L 'https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)' -o /usr/local/bin/docker-compose"
-        
+        cmd: "curl -L '{{ docker_compose_url }}' -o /usr/local/bin/docker-compose"
+
     - name: Make Docker Compose executable
       command:
         cmd: "chmod +x /usr/local/bin/docker-compose"
+
 
     - name: Start and enable Docker service
       service:
