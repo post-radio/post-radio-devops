@@ -20,9 +20,8 @@
         state: present
 
     - name: Install Docker Compose
-      pip:
-        name: docker-compose
-        state: present
+      command:
+        cmd: "curl -L \"https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-$(uname -s)-$(uname -m)\" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose"
 
     - name: Start and enable Docker service
       service:
