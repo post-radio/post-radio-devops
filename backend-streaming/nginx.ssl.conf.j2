@@ -2,11 +2,42 @@ server {
     listen 80;
     server_name {{ domain_name }} {{ domain_alias }};
 
+    # Redirect all HTTP requests to HTTPS
+    return 301 https://$server_name$request_uri;
+
+    # Optionally, you can handle www to non-www redirect (or vice versa) here
+}
+
+server {
     listen 443 ssl;
+    server_name streaming.post-radio.io www.streaming.post-radio.io;
+
     ssl_certificate /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{{ domain_name }}/privkey.pem;
-    
+
+    # It's recommended to include ssl configurations for security enhancements
+    # Add configurations such as ssl_protocols, ssl_ciphers, ssl_session_cache, etc.
+
     location / {
+        # This will handle CORS preflight requests
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' '*';
+            # Preflight requests don't require user credentials so set 'true' if needed
+            add_header 'Access-Control-Allow-Credentials' 'false';
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+            # Custom headers and headers various browsers *should* be OK with but aren't
+            add_header 'Access-Control-Allow-Headers' 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
+            # Tell client that this pre-flight info is valid for 20 days
+            add_header 'Access-Control-Max-Age' 1728000;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
+            return 204;
+        }
+        
+        # This is for actual CORS requests
+        add_header 'Access-Control-Allow-Origin' '*';
+        add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range';
+
         proxy_pass http://localhost:5000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -23,5 +54,23 @@ server {
     location /audiofiles/ {
         alias /var/www/audiofiles/;
         try_files $uri $uri/ =404;
+        # If you want to allow CORS for static files as well:
+        add_header 'Access-Control-Allow-Origin' '*';
     }
+
+    # Additional SSL configurations go here
+
+    # Recommended SSL settings
+    # ssl_protocols TLSv1.2 TLSv1.3;
+    # ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256';
+    # ssl_prefer_server_ciphers on;
+    # ssl_session_cache shared:SSL:10m;
+    # ssl_session_tickets off;
+
+    # OCSP Stapling ---
+    # Uncomment and update the following lines
+    # ssl_stapling on;
+    # ssl_stapling_verify on;
+    # resolver 1.1.1.1 8.8.8.8 valid=300s;
+    # resolver_timeout 5s;
 }

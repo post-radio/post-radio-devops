@@ -86,18 +86,14 @@
         version: main
 
     - name: Stop all docker containers
-      command:
-        cmd: docker-compose build
-        chdir: "{{ project_directory }}"
+      shell: |
+        docker stop $(docker ps -q)
+
 
     - name: Build Docker image for the project
       command:
-        cmd: docker-compose build
+        cmd: docker-compose up --build
         chdir: "{{ project_directory }}"
-
-    - name: Run containers using Docker Compose
-      shell: |
-        docker stop $(docker ps -q)
 
   handlers:
     - name: Restart nginx
