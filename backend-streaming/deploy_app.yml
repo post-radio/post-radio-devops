@@ -87,8 +87,7 @@
 
     - name: Stop all docker containers
       shell: |
-        docker stop $(docker ps -q)
-
+        docker stop $(docker ps -a -q)
 
     - name: Build Docker image for the project
       command:
