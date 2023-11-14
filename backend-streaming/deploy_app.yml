@@ -89,9 +89,14 @@
       shell: |
         docker stop $(docker ps -a -q)
 
-    - name: Build Docker image for the project
+    - name: Build Docker images for the project
       command:
-        cmd: docker-compose up --build
+        cmd: docker-compose build
+        chdir: "{{ project_directory }}"
+
+    - name: Start Docker containers in detached mode
+      command:
+        cmd: docker-compose up -d
         chdir: "{{ project_directory }}"
 
   handlers:
