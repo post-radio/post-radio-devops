@@ -1,1 +1,2 @@
-user: "srv29717461.ultasrv.net"
+ansible_ssh_user: "srv29717461.ultasrv.net"
+ansible_ssh_pass: "553n73Xf2663JCO5vrJo+@"
