@@ -1,0 +1,17 @@
+- hosts: your_remote_server_ip
+  become: yes
+  vars:
+    ansible_ssh_user: your_remote_user
+    ansible_ssh_pass: your_password
+
+  tasks:
+    - name: Create a new user
+      user:
+        name: dev
+        state: present
+
+    - name: Set authorized key taken from file
+      authorized_key:
+        user: dev
+        state: present
+        key: "{{ lookup('file', 'S:/SSH/ssh-dev.pub') }}"
