@@ -87,12 +87,11 @@
 
     - name: Stop all docker containers
       shell: |
-        docker stop $(docker ps -a -q)
-
-    - name: Build Docker images for the project
-      command:
-        cmd: docker-compose build
-        chdir: "{{ project_directory }}"
+        if [ "$(docker ps -q)" != "" ]; then
+          docker stop $(docker ps -q)
+        fi
+      args:
+        executable: /bin/bash
 
     - name: Start Docker containers in detached mode
       command:

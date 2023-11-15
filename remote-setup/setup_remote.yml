@@ -9,8 +9,22 @@
         name: dev
         state: present
 
+    - name: Ensure the dev user has sudo privileges
+      user:
+        name: dev
+        groups: sudo
+        append: yes
+        
+    - name: Allow 'dev' user to execute sudo commands without a password
+      lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^%dev'
+        line: 'dev ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+    
     - name: Set authorized key taken from file
       authorized_key:
         user: dev
         state: present
-        key: "{{ lookup('file', 'S:/SSH/ssh-dev.pub') }}"
+        key: "{{ lookup('file', '~/ssh-dev.pub') }}"
